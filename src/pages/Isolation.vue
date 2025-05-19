@@ -47,6 +47,71 @@
           </v-card-text>
         </v-card>
         
+        <!-- NEW: Model Selection Card -->
+        <v-card class="mb-4">
+          <v-card-title>
+            <v-icon color="primary" class="mr-2">mdi-cog</v-icon>
+            Model Selection
+          </v-card-title>
+          <v-card-text>
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="selectedSeparationModel"
+                  :items="separationModelOptions"
+                  label="Separation Model"
+                  :disabled="isProcessing"
+                  :loading="loadingModels"
+                  hint="Model to separate audio sources"
+                  persistent-hint
+                ></v-select>
+              </v-col>
+              
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="selectedEmbeddingModel"
+                  :items="embeddingModelOptions"
+                  label="Embedding Model"
+                  :disabled="isProcessing"
+                  :loading="loadingModels"
+                  hint="Model to match voice profiles"
+                  persistent-hint
+                ></v-select>
+              </v-col>
+            </v-row>
+            
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-switch
+                  v-model="useVAD"
+                  label="Use Voice Activity Detection"
+                  :disabled="isProcessing"
+                  hint="Improves isolation in noisy environments"
+                  persistent-hint
+                ></v-switch>
+              </v-col>
+              
+              <v-col cols="12" md="6" v-if="useVAD">
+                <v-select
+                  v-model="selectedVADProcessor"
+                  :items="vadProcessorOptions"
+                  label="VAD Processor"
+                  :disabled="isProcessing || !useVAD"
+                  :loading="loadingModels"
+                ></v-select>
+              </v-col>
+            </v-row>
+            
+            <v-checkbox
+              v-model="useGPU"
+              label="Use GPU acceleration (if available)"
+              :disabled="isProcessing"
+              hint="May improve processing speed but requires compatible hardware"
+              persistent-hint
+            ></v-checkbox>
+          </v-card-text>
+        </v-card>
+        
         <v-card>
           <v-card-title>
             <v-icon color="primary" class="mr-2">mdi-music</v-icon>
@@ -212,6 +277,19 @@
                   <v-list-item-title>File Name</v-list-item-title>
                   <v-list-item-subtitle>{{ result.file_name }}</v-list-item-subtitle>
                 </v-list-item>
+                <!-- NEW: Model Information -->
+                <v-list-item>
+                  <v-list-item-title>Separation Model</v-list-item-title>
+                  <v-list-item-subtitle>{{ result.separation_model }}</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item>
+                  <v-list-item-title>Embedding Model</v-list-item-title>
+                  <v-list-item-subtitle>{{ result.embedding_model }}</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="result.use_vad">
+                  <v-list-item-title>VAD Processor</v-list-item-title>
+                  <v-list-item-subtitle>{{ result.vad_processor }}</v-list-item-subtitle>
+                </v-list-item>
               </v-list>
             </v-card>
           </v-card-text>
@@ -228,6 +306,29 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- NEW: Benchmark Button -->
+    <v-container fluid class="mt-4 mb-4">
+      <v-card v-if="audioBlob || importedFile" variant="tonal">
+        <v-card-title>
+          <v-icon start color="orange-darken-2">mdi-speedometer</v-icon>
+          Model Benchmarking
+        </v-card-title>
+        <v-card-text>
+          <p class="text-body-2 mb-4">
+            Compare performance of different model combinations on your audio.
+          </p>
+          <v-btn 
+            color="orange-darken-2" 
+            @click="showBenchmarkDialog = true"
+            :disabled="!selectedProfileId || (!audioBlob && !importedFile) || isProcessing"
+          >
+            <v-icon start>mdi-compare</v-icon>
+            Benchmark Models
+          </v-btn>
+        </v-card-text>
+      </v-card>
+    </v-container>
 
     <!-- History Section -->
     <v-container fluid class="mt-8">
@@ -284,6 +385,22 @@
             </v-chip>
           </template>
           
+          <!-- NEW: Models column -->
+          <template v-slot:item.models="{ item }">
+            <v-tooltip bottom>
+              <template v-slot:activator="{ props }">
+                <div v-bind="props" class="text-truncate" style="max-width: 150px;">
+                  {{ item.separationModel || 'convtasnet' }} / {{ item.embeddingModel || 'resemblyzer' }}
+                </div>
+              </template>
+              <span>
+                Separation: {{ item.separationModel || 'convtasnet' }}<br>
+                Embedding: {{ item.embeddingModel || 'resemblyzer' }}<br>
+                VAD: {{ item.useVad ? (item.vadProcessor || 'webrtcvad') : 'disabled' }}
+              </span>
+            </v-tooltip>
+          </template>
+          
           <!-- Actions column -->
           <template v-slot:item.actions="{ item }">
             <v-menu>
@@ -308,6 +425,13 @@
                   <v-list-item-title>
                     <v-icon start size="small">mdi-music</v-icon>
                     Play Isolated
+                  </v-list-item-title>
+                </v-list-item>
+                
+                <v-list-item @click="playHistoryItem(item, 'mixed')">
+                  <v-list-item-title>
+                    <v-icon start size="small">mdi-waveform</v-icon>
+                    Play Mixed Audio
                   </v-list-item-title>
                 </v-list-item>
                 
@@ -389,6 +513,22 @@
                   <v-list-item-subtitle>{{ selectedHistoryItem.fileName }}</v-list-item-subtitle>
                 </v-list-item>
                 
+                <!-- NEW: Models Information -->
+                <v-list-item>
+                  <v-list-item-title>Separation Model</v-list-item-title>
+                  <v-list-item-subtitle>{{ selectedHistoryItem.separationModel || 'convtasnet' }}</v-list-item-subtitle>
+                </v-list-item>
+                
+                <v-list-item>
+                  <v-list-item-title>Embedding Model</v-list-item-title>
+                  <v-list-item-subtitle>{{ selectedHistoryItem.embeddingModel || 'resemblyzer' }}</v-list-item-subtitle>
+                </v-list-item>
+                
+                <v-list-item v-if="selectedHistoryItem.useVad">
+                  <v-list-item-title>VAD Processor</v-list-item-title>
+                  <v-list-item-subtitle>{{ selectedHistoryItem.vadProcessor || 'webrtcvad' }}</v-list-item-subtitle>
+                </v-list-item>
+                
                 <v-list-item>
                   <v-list-item-title>Processing Time</v-list-item-title>
                   <v-list-item-subtitle>{{ selectedHistoryItem.processingTime }} seconds</v-list-item-subtitle>
@@ -399,6 +539,13 @@
             <v-col cols="12" md="6">
               <v-card flat>
                 <v-card-text>
+                  <div class="text-subtitle-1 mb-2 mt-4">Mixed Audio</div>
+                  <audio 
+                    controls 
+                    :src="selectedHistoryItem.mixedAudioUrl" 
+                    style="width: 100%"
+                  ></audio>
+                           
                   <div class="text-subtitle-1 mb-2">Voice Profile Sample</div>
                   <audio 
                     controls 
@@ -469,6 +616,189 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    
+    <!-- NEW: Benchmark Dialog -->
+    <v-dialog v-model="showBenchmarkDialog" max-width="800px">
+      <v-card>
+        <v-card-title>
+          <v-icon start color="orange-darken-2">mdi-speedometer</v-icon>
+          Benchmark Models
+        </v-card-title>
+        <v-card-text>
+          <p class="text-subtitle-2 mb-4">
+            Select models to compare performance on your audio file
+          </p>
+          
+          <v-form @submit.prevent="runBenchmark">
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="benchmarkSeparationModels"
+                  :items="separationModelOptions"
+                  label="Separation Models"
+                  multiple
+                  chips
+                  :disabled="isBenchmarking"
+                  hint="Select multiple models to compare"
+                  persistent-hint
+                ></v-select>
+              </v-col>
+              
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="benchmarkEmbeddingModels"
+                  :items="embeddingModelOptions"
+                  label="Embedding Models"
+                  multiple
+                  chips
+                  :disabled="isBenchmarking"
+                  hint="Select multiple models to compare"
+                  persistent-hint
+                ></v-select>
+              </v-col>
+            </v-row>
+            
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-switch
+                  v-model="benchmarkUseVAD"
+                  label="Use Voice Activity Detection"
+                  :disabled="isBenchmarking"
+                ></v-switch>
+              </v-col>
+              
+              <v-col cols="12" md="6" v-if="benchmarkUseVAD">
+                <v-select
+                  v-model="benchmarkVADProcessors"
+                  :items="vadProcessorOptions"
+                  label="VAD Processors"
+                  multiple
+                  chips
+                  :disabled="isBenchmarking || !benchmarkUseVAD"
+                ></v-select>
+              </v-col>
+            </v-row>
+            
+            <v-select
+              v-model="benchmarkOutputFormat"
+              :items="outputFormatOptions"
+              label="Output Format"
+              :disabled="isBenchmarking"
+            ></v-select>
+            
+            <v-alert v-if="benchmarkSeparationModels.length * benchmarkEmbeddingModels.length > 5" 
+              type="warning" variant="tonal" class="mt-2">
+              Running {{ benchmarkSeparationModels.length * benchmarkEmbeddingModels.length }} model combinations 
+              may take significant time. Consider reducing the number of models.
+            </v-alert>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" @click="showBenchmarkDialog = false" :disabled="isBenchmarking">Cancel</v-btn>
+          <v-btn 
+            color="orange-darken-2" 
+            @click="runBenchmark" 
+            :loading="isBenchmarking"
+            :disabled="benchmarkSeparationModels.length === 0 || benchmarkEmbeddingModels.length === 0"
+          >
+            <v-icon start>mdi-run</v-icon>
+            Run Benchmark
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
+    <!-- NEW: Benchmark Results Dialog -->
+    <v-dialog v-model="showBenchmarkResults" max-width="900px" scrollable>
+      <v-card>
+        <v-card-title>
+          <v-icon start color="success">mdi-chart-bar</v-icon>
+          Benchmark Results
+        </v-card-title>
+        <v-card-text>
+          <div v-if="benchmarkResults">
+            <v-alert type="success" density="compact" variant="tonal" class="mb-4">
+              Benchmarked {{ benchmarkResults.results.length }} model combinations
+            </v-alert>
+            
+            <h3 class="text-h6 mb-2">Results Summary</h3>
+            
+            <v-data-table
+              :headers="benchmarkHeaders"
+              :items="benchmarkResults.results"
+              :items-per-page="10"
+              density="compact"
+              class="mb-4"
+            >
+              <!-- Similarity column -->
+              <template v-slot:item.similarity="{ item }">
+                <v-chip
+                  :color="getSimilarityColor(item.similarity)"
+                  size="x-small"
+                  label
+                >
+                  {{ (item.similarity * 100).toFixed(1) }}%
+                </v-chip>
+              </template>
+              
+              <!-- Time column -->
+              <template v-slot:item.total_time="{ item }">
+                {{ item.total_time.toFixed(2) }}s
+              </template>
+              
+              <!-- VAD column -->
+              <template v-slot:item.use_vad="{ item }">
+                <v-icon v-if="item.use_vad" color="success" size="small">mdi-check</v-icon>
+                <v-icon v-else color="grey" size="small">mdi-minus</v-icon>
+              </template>
+            </v-data-table>
+            
+            <div class="d-flex justify-space-between align-center">
+              <div>
+                <v-btn 
+                  color="primary" 
+                  size="small"
+                  :href="API.baseURL + benchmarkResults.comparison_path"
+                  target="_blank"
+                >
+                  <v-icon start small>mdi-download</v-icon>
+                  Download Comparison Report
+                </v-btn>
+                
+                <v-btn 
+                  color="info" 
+                  size="small" 
+                  class="ml-2"
+                  :href="API.baseURL + benchmarkResults.benchmark_results_path"
+                  target="_blank"
+                >
+                  <v-icon start small>mdi-file-chart</v-icon>
+                  Download Raw Data
+                </v-btn>
+              </div>
+              
+              <v-btn 
+                color="success"
+                @click="applyBestModel"
+              >
+                <v-icon start>mdi-check-decagram</v-icon>
+                Apply Best Model
+              </v-btn>
+            </div>
+          </div>
+          
+          <div v-else class="text-center pa-4">
+            <v-progress-circular indeterminate color="primary"></v-progress-circular>
+            <p class="mt-2">Loading benchmark results...</p>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" @click="showBenchmarkResults = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -501,6 +831,42 @@ export default {
       processingStartTime: null,
       processingTime: 0,
       
+      // NEW: Model selection
+      loadingModels: true,
+      availableModels: {
+        separation_models: {},
+        embedding_models: {},
+        vad_processors: {}
+      },
+      selectedSeparationModel: 'convtasnet',
+      selectedEmbeddingModel: 'resemblyzer',
+      useVAD: false,
+      selectedVADProcessor: 'webrtcvad',
+      useGPU: false,
+      
+      // NEW: Benchmarking
+      showBenchmarkDialog: false,
+      benchmarkSeparationModels: ['convtasnet'],
+      benchmarkEmbeddingModels: ['resemblyzer'],
+      benchmarkUseVAD: false,
+      benchmarkVADProcessors: ['webrtcvad'],
+      benchmarkOutputFormat: 'json',
+      isBenchmarking: false,
+      showBenchmarkResults: false,
+      benchmarkResults: null,
+      outputFormatOptions: [
+        { title: 'JSON', value: 'json' },
+        { title: 'CSV', value: 'csv' },
+        { title: 'Markdown', value: 'markdown' }
+      ],
+      benchmarkHeaders: [
+        { title: 'Separation Model', key: 'separation_model', sortable: true },
+        { title: 'Embedding Model', key: 'embedding_model', sortable: true },
+        { title: 'VAD', key: 'use_vad', sortable: true },
+        { title: 'Match', key: 'similarity', sortable: true },
+        { title: 'Time (s)', key: 'total_time', sortable: true },
+      ],
+      
       // History functionality
       isolationHistory: [],
       loadingHistory: false,
@@ -509,6 +875,7 @@ export default {
         { title: 'Profile', key: 'profile', sortable: true },
         { title: 'Date', key: 'date', sortable: true },
         { title: 'Match', key: 'similarity', sortable: true },
+        { title: 'Models', key: 'models', sortable: true },
         { title: 'Processing Time', key: 'processingTime', sortable: true },
         { title: 'Actions', key: 'actions', sortable: false, align: 'end' }
       ],
@@ -531,6 +898,27 @@ export default {
     },
     getSelectedProfile() {
       return this.profiles.find(profile => profile.id === this.selectedProfileId) || null
+    },
+    separationModelOptions() {
+      if (!this.availableModels.separation_models) return []
+      return Object.keys(this.availableModels.separation_models).map(key => ({
+        title: this.availableModels.separation_models[key] || key,
+        value: key
+      }))
+    },
+    embeddingModelOptions() {
+      if (!this.availableModels.embedding_models) return []
+      return Object.keys(this.availableModels.embedding_models).map(key => ({
+        title: this.availableModels.embedding_models[key] || key,
+        value: key
+      }))
+    },
+    vadProcessorOptions() {
+      if (!this.availableModels.vad_processors) return []
+      return Object.keys(this.availableModels.vad_processors).map(key => ({
+        title: this.availableModels.vad_processors[key] || key,
+        value: key
+      }))
     }
   },
   watch: {
@@ -545,6 +933,7 @@ export default {
   },
   mounted() {
     this.fetchProfiles()
+    this.fetchAvailableModels()
     this.fetchIsolationHistory()
     
     // Load history from local storage
@@ -562,6 +951,38 @@ export default {
         })
         .finally(() => {
           this.loadingProfiles = false
+        })
+    },
+    
+    // NEW: Fetch available models
+    fetchAvailableModels() {
+      this.loadingModels = true
+      API.getAvailableModels()
+        .then(response => {
+          this.availableModels = response.data
+          console.log("Available models:", this.availableModels)
+          
+          // Set defaults if available
+          if (this.availableModels.separation_models && Object.keys(this.availableModels.separation_models).length > 0) {
+            this.selectedSeparationModel = Object.keys(this.availableModels.separation_models)[0]
+            this.benchmarkSeparationModels = [this.selectedSeparationModel]
+          }
+          
+          if (this.availableModels.embedding_models && Object.keys(this.availableModels.embedding_models).length > 0) {
+            this.selectedEmbeddingModel = Object.keys(this.availableModels.embedding_models)[0]
+            this.benchmarkEmbeddingModels = [this.selectedEmbeddingModel]
+          }
+          
+          if (this.availableModels.vad_processors && Object.keys(this.availableModels.vad_processors).length > 0) {
+            this.selectedVADProcessor = Object.keys(this.availableModels.vad_processors)[0]
+            this.benchmarkVADProcessors = [this.selectedVADProcessor]
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching available models:', error)
+        })
+        .finally(() => {
+          this.loadingModels = false
         })
     },
     
@@ -665,6 +1086,15 @@ export default {
       const formData = new FormData()
       formData.append('profile_id', this.selectedProfileId)
       
+      // NEW: Append model selection parameters
+      formData.append('separation_model', this.selectedSeparationModel)
+      formData.append('embedding_model', this.selectedEmbeddingModel)
+      formData.append('use_vad', this.useVAD)
+      if (this.useVAD) {
+        formData.append('vad_processor', this.selectedVADProcessor)
+      }
+      formData.append('use_gpu', this.useGPU)
+      
       // Append either recorded blob or imported file
       if (this.audioBlob) {
         formData.append('audio_file', this.audioBlob, 'test_audio.wav')
@@ -691,13 +1121,85 @@ export default {
         })
     },
     
+    // NEW: Run benchmark
+    runBenchmark() {
+      if (!this.selectedProfileId || (!this.audioBlob && !this.importedFile)) {
+        alert('Please select a profile and record or import audio first.')
+        return
+      }
+      
+      this.isBenchmarking = true
+      this.benchmarkResults = null
+      
+      const formData = new FormData()
+      formData.append('profile_id', this.selectedProfileId)
+      
+      // Append benchmark parameters
+      formData.append('separation_models', this.benchmarkSeparationModels.join(','))
+      formData.append('embedding_models', this.benchmarkEmbeddingModels.join(','))
+      formData.append('use_vad', this.benchmarkUseVAD)
+      if (this.benchmarkUseVAD) {
+        formData.append('vad_processors', this.benchmarkVADProcessors.join(','))
+      }
+      formData.append('output_format', this.benchmarkOutputFormat)
+      
+      // Append audio file
+      if (this.audioBlob) {
+        formData.append('audio_file', this.audioBlob, 'benchmark_audio.wav')
+      } else if (this.importedFile) {
+        formData.append('audio_file', this.importedFile, this.importedFile.name)
+      }
+      
+      API.benchmarkModels(formData)
+        .then(response => {
+          this.benchmarkResults = response.data
+          console.log("Benchmark results:", this.benchmarkResults)
+          
+          // Close benchmark dialog and show results
+          this.showBenchmarkDialog = false
+          this.showBenchmarkResults = true
+        })
+        .catch(error => {
+          console.error('Error benchmarking models:', error)
+          alert('Failed to benchmark models. Please try again.')
+        })
+        .finally(() => {
+          this.isBenchmarking = false
+        })
+    },
+    
+    // NEW: Apply best model from benchmark
+    applyBestModel() {
+      if (!this.benchmarkResults || !this.benchmarkResults.results || this.benchmarkResults.results.length === 0) {
+        return
+      }
+      
+      // Sort results by similarity (highest first)
+      const sortedResults = [...this.benchmarkResults.results].sort((a, b) => b.similarity - a.similarity)
+      const bestModel = sortedResults[0]
+      
+      // Apply best model configuration
+      this.selectedSeparationModel = bestModel.separation_model
+      this.selectedEmbeddingModel = bestModel.embedding_model
+      this.useVAD = bestModel.use_vad
+      if (bestModel.use_vad && bestModel.vad_processor) {
+        this.selectedVADProcessor = bestModel.vad_processor
+      }
+      
+      // Close benchmark results dialog
+      this.showBenchmarkResults = false
+      
+      // Show confirmation
+      alert(`Applied best model configuration:\nSeparation: ${bestModel.separation_model}\nEmbedding: ${bestModel.embedding_model}\nVAD: ${bestModel.use_vad ? bestModel.vad_processor : 'disabled'}\nSimilarity: ${(bestModel.similarity * 100).toFixed(1)}%`)
+    },
+    
     addToHistory(result) {
       const profile = this.getSelectedProfile
       if (!profile) return
       
       // Create history item
       const historyItem = {
-        id: Date.now().toString(), // Use timestamp as ID
+        id: Date.now().toString(),
         profile: profile.name,
         profileId: profile.id,
         date: new Date().toISOString(),
@@ -706,11 +1208,21 @@ export default {
         filePath: result.file_path,
         processingTime: this.processingTime,
         profileAudioUrl: this.profileAudioUrl,
-        isolatedAudioUrl: this.isolatedAudioUrl
+        isolatedAudioUrl: this.isolatedAudioUrl,
+        
+        // Add mixed audio URL
+        mixedAudioPath: result.mixed_audio_path,
+        mixedAudioUrl: API.baseURL + result.mixed_audio_path,
+        
+        // NEW: Add model information
+        separationModel: result.separation_model || this.selectedSeparationModel,
+        embeddingModel: result.embedding_model || this.selectedEmbeddingModel,
+        useVad: result.use_vad || this.useVAD,
+        vadProcessor: result.vad_processor || this.selectedVADProcessor
       }
       
       // Add to history and save
-      this.isolationHistory.unshift(historyItem) // Add to beginning of array
+      this.isolationHistory.unshift(historyItem)
       this.saveHistoryToStorage()
     },
     
@@ -733,6 +1245,9 @@ export default {
       } else if (type === 'isolated') {
         this.historyAudioUrl = item.isolatedAudioUrl
         this.historyAudioTitle = `Isolated Voice: ${item.profile}`
+      } else if (type === 'mixed') {
+        this.historyAudioUrl = item.mixedAudioUrl
+        this.historyAudioTitle = `Mixed Audio: ${item.profile}`
       }
       
       this.historyAudioDialog = true

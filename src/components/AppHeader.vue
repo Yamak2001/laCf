@@ -20,10 +20,6 @@
       <v-icon class="me-2">mdi-audio-input-stereo-minijack</v-icon>
       Voice Isolation
     </v-btn>
-    
-    <v-btn to="/monitoring" text icon>
-      <v-icon>mdi-chart-line</v-icon>
-    </v-btn>
   </v-app-bar>
 </template>
 

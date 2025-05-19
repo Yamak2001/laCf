@@ -1,9 +1,9 @@
+// src/router.js
 import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../pages/Home.vue'
 import ProfilesPage from '../pages/Profiles.vue'
 import IsolationPage from '../pages/Isolation.vue'
-import Monitoring from '../pages/Monitoring.vue'
-
+import ModelsPage from '../pages/Models.vue'
 
 const routes = [
   {
@@ -22,10 +22,9 @@ const routes = [
     component: IsolationPage
   },
   {
-    path: '/monitoring',
-    name: 'Monitoring',
-    component: Monitoring,
-    meta: { requiresAdmin: true } // Optional: Add admin check middleware
+    path: '/models',
+    name: 'Models',
+    component: ModelsPage
   }
 ]
 

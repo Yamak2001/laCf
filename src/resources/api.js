@@ -2,7 +2,6 @@
 import axios from 'axios'
 
 const baseURL = 'http://localhost:8000'
-
 const apiClient = axios.create({
   baseURL,
   withCredentials: false,
@@ -19,11 +18,9 @@ export default {
   getProfiles() {
     return apiClient.get('/api/voice-profiles/')
   },
-  
   getProfile(id) {
     return apiClient.get(`/api/voice-profiles/${id}`)
   },
-  
   createProfile(formData) {
     return apiClient.post('/api/voice-profiles/', formData, {
       headers: {
@@ -31,11 +28,9 @@ export default {
       }
     })
   },
-  
   updateProfile(id, profile) {
     return apiClient.put(`/api/voice-profiles/${id}`, profile)
   },
-  
   deleteProfile(id) {
     return apiClient.delete(`/api/voice-profiles/${id}`)
   },
@@ -49,6 +44,11 @@ export default {
     })
   },
   
+  // Get available models
+  getAvailableModels() {
+    return apiClient.get('/api/audio/models')
+  },
+  
   // Helper to get full URL for file paths
   getFileUrl(relativePath) {
     // Make sure path starts with a slash
@@ -56,14 +56,5 @@ export default {
       relativePath = '/' + relativePath
     }
     return `${baseURL}${relativePath}`
-  },
-  
-  // Monitoring endpoints
-  getSystemStats() {
-    return apiClient.get('/api/monitoring/stats')
-  },
-  
-  getRequests() {
-    return apiClient.get('/api/monitoring/requests')
   }
 }
