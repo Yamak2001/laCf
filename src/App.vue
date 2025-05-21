@@ -8,9 +8,9 @@
       </v-container>
     </v-main>
     
-    <v-footer app>
+    <!-- <v-footer app>
       <span>&copy; {{ new Date().getFullYear() }} - Loud & Clear Voice Isolation System</span>
-    </v-footer>
+    </v-footer> -->
   </v-app>
 </template>
 

@@ -1,11 +1,12 @@
 <!-- src/pages/Isolation.vue -->
 <template>
   <div>
-    <h1 class="text-h3 mb-4">Voice Isolation Test</h1>
+    <h1 class="text-h4 mb-3">Voice Isolation Test</h1>
     
     <v-row>
-      <v-col cols="12" md="6">
-        <v-card class="mb-4">
+      <!-- Voice Profile Selection (Column 1) -->
+      <v-col cols="12" md="3" class="pa-2">
+        <v-card height="calc(100vh - 180px)" style="overflow-y: auto">
           <v-card-title>
             <v-icon color="primary" class="mr-2">mdi-account-voice</v-icon>
             Select Voice Profile
@@ -46,79 +47,17 @@
             </p>
           </v-card-text>
         </v-card>
-        
-        <!-- NEW: Model Selection Card -->
-        <v-card class="mb-4">
-          <v-card-title>
-            <v-icon color="primary" class="mr-2">mdi-cog</v-icon>
-            Model Selection
-          </v-card-title>
-          <v-card-text>
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="selectedSeparationModel"
-                  :items="separationModelOptions"
-                  label="Separation Model"
-                  :disabled="isProcessing"
-                  :loading="loadingModels"
-                  hint="Model to separate audio sources"
-                  persistent-hint
-                ></v-select>
-              </v-col>
-              
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="selectedEmbeddingModel"
-                  :items="embeddingModelOptions"
-                  label="Embedding Model"
-                  :disabled="isProcessing"
-                  :loading="loadingModels"
-                  hint="Model to match voice profiles"
-                  persistent-hint
-                ></v-select>
-              </v-col>
-            </v-row>
-            
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-switch
-                  v-model="useVAD"
-                  label="Use Voice Activity Detection"
-                  :disabled="isProcessing"
-                  hint="Improves isolation in noisy environments"
-                  persistent-hint
-                ></v-switch>
-              </v-col>
-              
-              <v-col cols="12" md="6" v-if="useVAD">
-                <v-select
-                  v-model="selectedVADProcessor"
-                  :items="vadProcessorOptions"
-                  label="VAD Processor"
-                  :disabled="isProcessing || !useVAD"
-                  :loading="loadingModels"
-                ></v-select>
-              </v-col>
-            </v-row>
-            
-            <v-checkbox
-              v-model="useGPU"
-              label="Use GPU acceleration (if available)"
-              :disabled="isProcessing"
-              hint="May improve processing speed but requires compatible hardware"
-              persistent-hint
-            ></v-checkbox>
-          </v-card-text>
-        </v-card>
-        
-        <v-card>
+      </v-col>
+      
+      <!-- Test Audio and Model Selection (Column 2) -->
+      <v-col cols="12" md="5" class="pa-2">
+        <v-card height="calc(100vh - 180px)" class="d-flex flex-column" style="overflow-y: auto">
           <v-card-title>
             <v-icon color="primary" class="mr-2">mdi-music</v-icon>
             Test Audio
           </v-card-title>
           <v-card-text>
-            <p class="text-body-2 mb-4">
+            <p class="text-body-2 mb-2">
               Record or import audio with multiple speakers, including the profile you selected.
             </p>
             
@@ -133,7 +72,7 @@
               </v-tab>
             </v-tabs>
             
-            <v-window v-model="activeSourceTab" class="mt-4">
+            <v-window v-model="activeSourceTab" class="mt-2">
               <!-- Recording Tab -->
               <v-window-item value="record">
                 <AudioRecorder 
@@ -153,12 +92,13 @@
                     label="Select audio file"
                     prepend-icon="mdi-file-music"
                     show-size
+                    density="compact"
                     :disabled="!selectedProfileId || isProcessing"
                     :rules="[v => !v || v.size < 50000000 || 'File size should be less than 50MB']"
                     @update:model-value="handleFileImport"
                   ></v-file-input>
                   
-                  <div v-if="originalAudioUrl && activeSourceTab === 'import'" class="mt-4">
+                  <div v-if="originalAudioUrl && activeSourceTab === 'import'" class="mt-2">
                     <p class="text-subtitle-2 mb-2">Preview:</p>
                     <audio controls :src="originalAudioUrl" style="width: 100%"></audio>
                   </div>
@@ -166,9 +106,83 @@
               </v-window-item>
             </v-window>
             
+            <!-- Model Selection Card (within the same column, below Test Audio) -->
+            <v-divider class="my-3"></v-divider>
+            <div>
+              <div class="text-subtitle-1 d-flex align-center mb-2">
+                <v-icon color="primary" class="mr-2">mdi-cog</v-icon>
+                Model Selection
+              </div>
+              
+              <v-row dense>
+                <v-col cols="6">
+                  <v-select
+                    v-model="selectedSeparationModel"
+                    :items="separationModelOptions"
+                    label="Separation Model"
+                    :disabled="isProcessing"
+                    :loading="loadingModels"
+                    density="compact"
+                    hint="Separates audio sources"
+                    persistent-hint
+                  ></v-select>
+                </v-col>
+                
+                <v-col cols="6">
+                  <v-select
+                    v-model="selectedEmbeddingModel"
+                    :items="embeddingModelOptions"
+                    label="Embedding Model"
+                    :disabled="isProcessing"
+                    :loading="loadingModels"
+                    density="compact"
+                    hint="Matches voice profiles"
+                    persistent-hint
+                  ></v-select>
+                </v-col>
+              </v-row>
+              
+              <v-row dense class="mt-1">
+                <v-col cols="6">
+                  <v-switch
+                    v-model="useVAD"
+                    label="Use VAD"
+                    :disabled="isProcessing"
+                    density="compact"
+                    hide-details
+                  ></v-switch>
+                </v-col>
+                
+                <v-col cols="6" v-if="useVAD">
+                  <v-select
+                    v-model="selectedVADProcessor"
+                    :items="vadProcessorOptions"
+                    label="VAD Processor"
+                    :disabled="isProcessing || !useVAD"
+                    :loading="loadingModels"
+                    density="compact"
+                    hide-details
+                  ></v-select>
+                </v-col>
+              </v-row>
+              
+              <v-row>
+                <v-col cols="12">
+                  <v-checkbox
+                    v-model="useGPU"
+                    label="Use GPU acceleration (if available)"
+                    :disabled="isProcessing"
+                    density="compact"
+                    hide-details
+                  ></v-checkbox>
+                </v-col>
+              </v-row>
+            </div>
+            
             <v-btn
               color="primary"
-              class="mt-4"
+              block
+              class="mt-3"
               :disabled="!audioBlob && !importedFile || !selectedProfileId || isProcessing"
               :loading="isProcessing"
               @click="processAudio"
@@ -180,24 +194,26 @@
         </v-card>
       </v-col>
       
-      <v-col cols="12" md="6">
-        <v-card v-if="result">
+      <!-- Results Column (Column 3) -->
+      <v-col cols="12" md="4" class="pa-2">
+        <v-card v-if="result" height="calc(100vh - 180px)" class="d-flex flex-column" style="overflow-y: auto">
           <v-card-title>
             <v-icon color="success" class="mr-2">mdi-check-circle</v-icon>
             Voice Isolation Results
           </v-card-title>
-          <v-card-text>
+          <v-card-text class="flex-grow-1 d-flex flex-column">
             <p class="text-body-2">
               Match confidence: <strong>{{ (result.similarity * 100).toFixed(1) }}%</strong>
             </p>
             
             <v-tabs v-model="activeResultTab">
-              <v-tab value="original">Original Audio</v-tab>
-              <v-tab value="isolated">Isolated Voice</v-tab>
-              <v-tab value="comparison">Comparison</v-tab>
+              <v-tab value="original">Original</v-tab>
+              <v-tab value="isolated">Isolated</v-tab>
+              <v-tab value="comparison">Compare</v-tab>
+              <v-tab value="history">Results History</v-tab>
             </v-tabs>
             
-            <v-window v-model="activeResultTab" class="mt-4">
+            <v-window v-model="activeResultTab" class="mt-2 flex-grow-1">
               <v-window-item value="original">
                 <v-card flat>
                   <v-card-text>
@@ -219,242 +235,209 @@
               <v-window-item value="comparison">
                 <v-card flat>
                   <v-card-text>
-                    <v-list>
+                    <v-list density="compact">
                       <v-list-item>
                         <template v-slot:prepend>
-                          <v-avatar color="primary" size="36">
-                            <span class="text-h6 text-white">{{ getSelectedProfile?.name.charAt(0) || '?' }}</span>
+                          <v-avatar color="primary" size="28">
+                            <span class="text-caption text-white">{{ getSelectedProfile?.name.charAt(0) || '?' }}</span>
                           </v-avatar>
                         </template>
-                        <v-list-item-title>{{ getSelectedProfile?.name }} (Profile Sample)</v-list-item-title>
+                        <v-list-item-title class="text-caption">Profile Sample</v-list-item-title>
                         <template v-slot:append>
-                          <audio controls :src="profileAudioUrl" style="max-width: 250px"></audio>
+                          <audio controls :src="profileAudioUrl" style="max-width: 180px; height: 30px;"></audio>
                         </template>
                       </v-list-item>
                       
                       <v-list-item>
                         <template v-slot:prepend>
-                          <v-avatar color="grey" size="36">
-                            <v-icon>mdi-microphone</v-icon>
+                          <v-avatar color="grey" size="28">
+                            <v-icon size="small">mdi-microphone</v-icon>
                           </v-avatar>
                         </template>
-                        <v-list-item-title>Mixed Audio</v-list-item-title>
+                        <v-list-item-title class="text-caption">Mixed Audio</v-list-item-title>
                         <template v-slot:append>
-                          <audio controls :src="originalAudioUrl" style="max-width: 250px"></audio>
+                          <audio controls :src="originalAudioUrl" style="max-width: 180px; height: 30px;"></audio>
                         </template>
                       </v-list-item>
                       
                       <v-list-item>
                         <template v-slot:prepend>
-                          <v-avatar color="success" size="36">
-                            <v-icon>mdi-account-voice</v-icon>
+                          <v-avatar color="success" size="28">
+                            <v-icon size="small">mdi-account-voice</v-icon>
                           </v-avatar>
                         </template>
-                        <v-list-item-title>Isolated Voice</v-list-item-title>
+                        <v-list-item-title class="text-caption">Isolated Voice</v-list-item-title>
                         <template v-slot:append>
-                          <audio controls :src="isolatedAudioUrl" style="max-width: 250px"></audio>
+                          <audio controls :src="isolatedAudioUrl" style="max-width: 180px; height: 30px;"></audio>
                         </template>
                       </v-list-item>
                     </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-window-item>
+              
+              <!-- Results History Tab -->
+              <v-window-item value="history">
+                <v-card flat>
+                  <v-card-text>
+                    <v-text-field
+                      v-model="historySearch"
+                      append-icon="mdi-magnify"
+                      label="Search"
+                      single-line
+                      density="compact"
+                      hide-details
+                      variant="underlined"
+                      class="mb-2"
+                    ></v-text-field>
                     
-                    <v-alert type="info" variant="tonal" class="mt-4">
-                      Compare the original voice profile with the isolated voice to assess the quality of isolation.
-                    </v-alert>
+                    <v-data-table
+                      :headers="historyHeaders"
+                      :items="isolationHistory"
+                      :search="historySearch"
+                      :loading="loadingHistory"
+                      loading-text="Loading history..."
+                      :items-per-page="5"
+                      density="compact"
+                      class="results-history-table"
+                      :footer-props="{
+                        'items-per-page-options': [5, 10, 20, -1],
+                        'items-per-page-text': 'Per page',
+                        'class': 'text-caption'
+                      }"
+                    >
+                      <!-- Profile column -->
+                      <template v-slot:item.profile="{ item }">
+                        <div class="d-flex align-center">
+                          <v-avatar color="primary" size="28" class="mr-2">
+                            <span class="text-caption text-white">{{ item.profile.charAt(0) }}</span>
+                          </v-avatar>
+                          {{ item.profile }}
+                        </div>
+                      </template>
+                      
+                      <!-- Date column -->
+                      <template v-slot:item.date="{ item }">
+                        {{ formatDate(item.date) }}
+                      </template>
+                      
+                      <!-- Similarity column -->
+                      <template v-slot:item.similarity="{ item }">
+                        <v-chip
+                          :color="getSimilarityColor(item.similarity)"
+                          size="x-small"
+                          label
+                        >
+                          {{ (item.similarity * 100).toFixed(1) }}%
+                        </v-chip>
+                      </template>
+                      
+                      <!-- Models column -->
+                      <template v-slot:item.models="{ item }">
+                        <v-tooltip bottom>
+                          <template v-slot:activator="{ props }">
+                            <div v-bind="props" class="text-truncate" style="max-width: 150px;">
+                              {{ item.separationModel || 'convtasnet' }} / {{ item.embeddingModel || 'resemblyzer' }}
+                            </div>
+                          </template>
+                          <span>
+                            Separation: {{ item.separationModel || 'convtasnet' }}<br>
+                            Embedding: {{ item.embeddingModel || 'resemblyzer' }}<br>
+                            VAD: {{ item.useVad ? (item.vadProcessor || 'webrtcvad') : 'disabled' }}
+                          </span>
+                        </v-tooltip>
+                      </template>
+                      
+                      <!-- Actions column -->
+                      <template v-slot:item.actions="{ item }">
+                        <v-menu>
+                          <template v-slot:activator="{ props }">
+                            <v-btn
+                              icon
+                              size="x-small"
+                              v-bind="props"
+                            >
+                              <v-icon size="small">mdi-dots-vertical</v-icon>
+                            </v-btn>
+                          </template>
+                          <v-list density="compact">
+                            <v-list-item @click="playHistoryItem(item, 'profile')">
+                              <v-list-item-title class="text-caption">
+                                <v-icon size="small" start>mdi-account-voice</v-icon>
+                                Play Profile
+                              </v-list-item-title>
+                            </v-list-item>
+                            
+                            <v-list-item @click="playHistoryItem(item, 'isolated')">
+                              <v-list-item-title class="text-caption">
+                                <v-icon size="small" start>mdi-music</v-icon>
+                                Play Isolated
+                              </v-list-item-title>
+                            </v-list-item>
+                            
+                            <v-list-item @click="playHistoryItem(item, 'mixed')">
+                              <v-list-item-title class="text-caption">
+                                <v-icon size="small" start>mdi-waveform</v-icon>
+                                Play Mixed Audio
+                              </v-list-item-title>
+                            </v-list-item>
+                            
+                            <v-list-item @click="viewHistoryDetails(item)">
+                              <v-list-item-title class="text-caption">
+                                <v-icon size="small" start>mdi-information-outline</v-icon>
+                                View Details
+                              </v-list-item-title>
+                            </v-list-item>
+                            
+                            <v-list-item @click="deleteHistoryItem(item)">
+                              <v-list-item-title class="text-caption">
+                                <v-icon size="small" start color="error">mdi-delete</v-icon>
+                                Delete
+                              </v-list-item-title>
+                            </v-list-item>
+                          </v-list>
+                        </v-menu>
+                      </template>
+                    </v-data-table>
                   </v-card-text>
                 </v-card>
               </v-window-item>
             </v-window>
             
-            <v-card class="mt-4" variant="outlined">
-              <v-card-title class="text-subtitle-1">Processing Details</v-card-title>
+            <v-card class="mt-2" variant="outlined">
+              <v-card-title class="text-subtitle-2 py-1">Processing Details</v-card-title>
               <v-divider></v-divider>
               <v-list density="compact" lines="two">
-                <v-list-item>
-                  <v-list-item-title>Process Time</v-list-item-title>
-                  <v-list-item-subtitle>{{ processingTime }} seconds</v-list-item-subtitle>
+                <v-list-item density="compact">
+                  <v-list-item-title class="text-caption">Process Time</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">{{ processingTime }} seconds</v-list-item-subtitle>
                 </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>File Name</v-list-item-title>
-                  <v-list-item-subtitle>{{ result.file_name }}</v-list-item-subtitle>
+                <v-list-item density="compact">
+                  <v-list-item-title class="text-caption">Models</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">{{ result.separation_model }} / {{ result.embedding_model }}</v-list-item-subtitle>
                 </v-list-item>
-                <!-- NEW: Model Information -->
-                <v-list-item>
-                  <v-list-item-title>Separation Model</v-list-item-title>
-                  <v-list-item-subtitle>{{ result.separation_model }}</v-list-item-subtitle>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>Embedding Model</v-list-item-title>
-                  <v-list-item-subtitle>{{ result.embedding_model }}</v-list-item-subtitle>
-                </v-list-item>
-                <v-list-item v-if="result.use_vad">
-                  <v-list-item-title>VAD Processor</v-list-item-title>
-                  <v-list-item-subtitle>{{ result.vad_processor }}</v-list-item-subtitle>
+                <v-list-item density="compact" v-if="result.use_vad">
+                  <v-list-item-title class="text-caption">VAD</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">{{ result.vad_processor }}</v-list-item-subtitle>
                 </v-list-item>
               </v-list>
             </v-card>
           </v-card-text>
         </v-card>
         
-        <v-card v-else class="d-flex align-center justify-center" height="100%">
+        <v-card v-else class="d-flex align-center justify-center" height="calc(100vh - 180px)">
           <div class="text-center pa-4">
             <v-icon size="64" color="grey-lighten-1">mdi-waveform</v-icon>
             <p class="text-h6 mt-2">Results will appear here</p>
             <p class="text-body-2">
-              Select a voice profile and provide audio, then click "Isolate Voice"
+              Select a profile and provide audio, then click "Isolate Voice"
             </p>
           </div>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- NEW: Benchmark Button -->
-    <v-container fluid class="mt-4 mb-4">
-      <v-card v-if="audioBlob || importedFile" variant="tonal">
-        <v-card-title>
-          <v-icon start color="orange-darken-2">mdi-speedometer</v-icon>
-          Model Benchmarking
-        </v-card-title>
-        <v-card-text>
-          <p class="text-body-2 mb-4">
-            Compare performance of different model combinations on your audio.
-          </p>
-          <v-btn 
-            color="orange-darken-2" 
-            @click="showBenchmarkDialog = true"
-            :disabled="!selectedProfileId || (!audioBlob && !importedFile) || isProcessing"
-          >
-            <v-icon start>mdi-compare</v-icon>
-            Benchmark Models
-          </v-btn>
-        </v-card-text>
-      </v-card>
-    </v-container>
-
-    <!-- History Section -->
-    <v-container fluid class="mt-8">
-      <v-card>
-        <v-card-title>
-          <v-icon start color="info">mdi-history</v-icon>
-          Isolation History
-          <v-spacer></v-spacer>
-          <v-text-field
-            v-model="historySearch"
-            append-icon="mdi-magnify"
-            label="Search"
-            single-line
-            hide-details
-            style="max-width: 300px"
-          ></v-text-field>
-        </v-card-title>
-        
-        <v-data-table
-          :headers="historyHeaders"
-          :items="isolationHistory"
-          :search="historySearch"
-          :loading="loadingHistory"
-          loading-text="Loading history..."
-          :items-per-page="5"
-          :footer-props="{
-            'items-per-page-options': [5, 10, 20, -1],
-            'items-per-page-text': 'Results per page'
-          }"
-        >
-          <!-- Profile column -->
-          <template v-slot:item.profile="{ item }">
-            <div class="d-flex align-center">
-              <v-avatar color="primary" size="32" class="mr-2">
-                <span class="text-caption text-white">{{ item.profile.charAt(0) }}</span>
-              </v-avatar>
-              {{ item.profile }}
-            </div>
-          </template>
-          
-          <!-- Date column -->
-          <template v-slot:item.date="{ item }">
-            {{ formatDate(item.date) }}
-          </template>
-          
-          <!-- Similarity column -->
-          <template v-slot:item.similarity="{ item }">
-            <v-chip
-              :color="getSimilarityColor(item.similarity)"
-              size="small"
-              label
-            >
-              {{ (item.similarity * 100).toFixed(1) }}%
-            </v-chip>
-          </template>
-          
-          <!-- NEW: Models column -->
-          <template v-slot:item.models="{ item }">
-            <v-tooltip bottom>
-              <template v-slot:activator="{ props }">
-                <div v-bind="props" class="text-truncate" style="max-width: 150px;">
-                  {{ item.separationModel || 'convtasnet' }} / {{ item.embeddingModel || 'resemblyzer' }}
-                </div>
-              </template>
-              <span>
-                Separation: {{ item.separationModel || 'convtasnet' }}<br>
-                Embedding: {{ item.embeddingModel || 'resemblyzer' }}<br>
-                VAD: {{ item.useVad ? (item.vadProcessor || 'webrtcvad') : 'disabled' }}
-              </span>
-            </v-tooltip>
-          </template>
-          
-          <!-- Actions column -->
-          <template v-slot:item.actions="{ item }">
-            <v-menu>
-              <template v-slot:activator="{ props }">
-                <v-btn
-                  icon
-                  size="small"
-                  v-bind="props"
-                >
-                  <v-icon>mdi-dots-vertical</v-icon>
-                </v-btn>
-              </template>
-              <v-list>
-                <v-list-item @click="playHistoryItem(item, 'profile')">
-                  <v-list-item-title>
-                    <v-icon start size="small">mdi-account-voice</v-icon>
-                    Play Profile
-                  </v-list-item-title>
-                </v-list-item>
-                
-                <v-list-item @click="playHistoryItem(item, 'isolated')">
-                  <v-list-item-title>
-                    <v-icon start size="small">mdi-music</v-icon>
-                    Play Isolated
-                  </v-list-item-title>
-                </v-list-item>
-                
-                <v-list-item @click="playHistoryItem(item, 'mixed')">
-                  <v-list-item-title>
-                    <v-icon start size="small">mdi-waveform</v-icon>
-                    Play Mixed Audio
-                  </v-list-item-title>
-                </v-list-item>
-                
-                <v-list-item @click="viewHistoryDetails(item)">
-                  <v-list-item-title>
-                    <v-icon start size="small">mdi-information-outline</v-icon>
-                    View Details
-                  </v-list-item-title>
-                </v-list-item>
-                
-                <v-list-item @click="deleteHistoryItem(item)">
-                  <v-list-item-title>
-                    <v-icon start size="small" color="error">mdi-delete</v-icon>
-                    Delete
-                  </v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-menu>
-          </template>
-        </v-data-table>
-      </v-card>
-    </v-container>
-
+    
     <!-- Audio Player Dialog for Profile Sample -->
     <v-dialog v-model="audioDialog" max-width="500px">
       <v-card>
@@ -617,188 +600,6 @@
       </v-card>
     </v-dialog>
     
-    <!-- NEW: Benchmark Dialog -->
-    <v-dialog v-model="showBenchmarkDialog" max-width="800px">
-      <v-card>
-        <v-card-title>
-          <v-icon start color="orange-darken-2">mdi-speedometer</v-icon>
-          Benchmark Models
-        </v-card-title>
-        <v-card-text>
-          <p class="text-subtitle-2 mb-4">
-            Select models to compare performance on your audio file
-          </p>
-          
-          <v-form @submit.prevent="runBenchmark">
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="benchmarkSeparationModels"
-                  :items="separationModelOptions"
-                  label="Separation Models"
-                  multiple
-                  chips
-                  :disabled="isBenchmarking"
-                  hint="Select multiple models to compare"
-                  persistent-hint
-                ></v-select>
-              </v-col>
-              
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="benchmarkEmbeddingModels"
-                  :items="embeddingModelOptions"
-                  label="Embedding Models"
-                  multiple
-                  chips
-                  :disabled="isBenchmarking"
-                  hint="Select multiple models to compare"
-                  persistent-hint
-                ></v-select>
-              </v-col>
-            </v-row>
-            
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-switch
-                  v-model="benchmarkUseVAD"
-                  label="Use Voice Activity Detection"
-                  :disabled="isBenchmarking"
-                ></v-switch>
-              </v-col>
-              
-              <v-col cols="12" md="6" v-if="benchmarkUseVAD">
-                <v-select
-                  v-model="benchmarkVADProcessors"
-                  :items="vadProcessorOptions"
-                  label="VAD Processors"
-                  multiple
-                  chips
-                  :disabled="isBenchmarking || !benchmarkUseVAD"
-                ></v-select>
-              </v-col>
-            </v-row>
-            
-            <v-select
-              v-model="benchmarkOutputFormat"
-              :items="outputFormatOptions"
-              label="Output Format"
-              :disabled="isBenchmarking"
-            ></v-select>
-            
-            <v-alert v-if="benchmarkSeparationModels.length * benchmarkEmbeddingModels.length > 5" 
-              type="warning" variant="tonal" class="mt-2">
-              Running {{ benchmarkSeparationModels.length * benchmarkEmbeddingModels.length }} model combinations 
-              may take significant time. Consider reducing the number of models.
-            </v-alert>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" @click="showBenchmarkDialog = false" :disabled="isBenchmarking">Cancel</v-btn>
-          <v-btn 
-            color="orange-darken-2" 
-            @click="runBenchmark" 
-            :loading="isBenchmarking"
-            :disabled="benchmarkSeparationModels.length === 0 || benchmarkEmbeddingModels.length === 0"
-          >
-            <v-icon start>mdi-run</v-icon>
-            Run Benchmark
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-    
-    <!-- NEW: Benchmark Results Dialog -->
-    <v-dialog v-model="showBenchmarkResults" max-width="900px" scrollable>
-      <v-card>
-        <v-card-title>
-          <v-icon start color="success">mdi-chart-bar</v-icon>
-          Benchmark Results
-        </v-card-title>
-        <v-card-text>
-          <div v-if="benchmarkResults">
-            <v-alert type="success" density="compact" variant="tonal" class="mb-4">
-              Benchmarked {{ benchmarkResults.results.length }} model combinations
-            </v-alert>
-            
-            <h3 class="text-h6 mb-2">Results Summary</h3>
-            
-            <v-data-table
-              :headers="benchmarkHeaders"
-              :items="benchmarkResults.results"
-              :items-per-page="10"
-              density="compact"
-              class="mb-4"
-            >
-              <!-- Similarity column -->
-              <template v-slot:item.similarity="{ item }">
-                <v-chip
-                  :color="getSimilarityColor(item.similarity)"
-                  size="x-small"
-                  label
-                >
-                  {{ (item.similarity * 100).toFixed(1) }}%
-                </v-chip>
-              </template>
-              
-              <!-- Time column -->
-              <template v-slot:item.total_time="{ item }">
-                {{ item.total_time.toFixed(2) }}s
-              </template>
-              
-              <!-- VAD column -->
-              <template v-slot:item.use_vad="{ item }">
-                <v-icon v-if="item.use_vad" color="success" size="small">mdi-check</v-icon>
-                <v-icon v-else color="grey" size="small">mdi-minus</v-icon>
-              </template>
-            </v-data-table>
-            
-            <div class="d-flex justify-space-between align-center">
-              <div>
-                <v-btn 
-                  color="primary" 
-                  size="small"
-                  :href="API.baseURL + benchmarkResults.comparison_path"
-                  target="_blank"
-                >
-                  <v-icon start small>mdi-download</v-icon>
-                  Download Comparison Report
-                </v-btn>
-                
-                <v-btn 
-                  color="info" 
-                  size="small" 
-                  class="ml-2"
-                  :href="API.baseURL + benchmarkResults.benchmark_results_path"
-                  target="_blank"
-                >
-                  <v-icon start small>mdi-file-chart</v-icon>
-                  Download Raw Data
-                </v-btn>
-              </div>
-              
-              <v-btn 
-                color="success"
-                @click="applyBestModel"
-              >
-                <v-icon start>mdi-check-decagram</v-icon>
-                Apply Best Model
-              </v-btn>
-            </div>
-          </div>
-          
-          <div v-else class="text-center pa-4">
-            <v-progress-circular indeterminate color="primary"></v-progress-circular>
-            <p class="mt-2">Loading benchmark results...</p>
-          </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" @click="showBenchmarkResults = false">Close</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
@@ -1309,3 +1110,10 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.results-history-table {
+  max-height: 250px;
+  overflow-y: auto;
+}
+</style>
