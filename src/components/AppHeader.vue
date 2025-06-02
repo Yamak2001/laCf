@@ -20,6 +20,11 @@
       <v-icon class="me-2">mdi-audio-input-stereo-minijack</v-icon>
       Voice Isolation
     </v-btn>
+    
+    <v-btn to="/streamlined" variant="text">
+      <v-icon class="me-2">mdi-lightning-bolt</v-icon>
+      Quick
+    </v-btn>
   </v-app-bar>
 </template>
 

@@ -12,8 +12,6 @@
               <v-text-field
                 v-model="profileName"
                 label="Name"
-                required
-                :rules="[v => !!v || 'Name is required']"
               ></v-text-field>
             </v-col>
             
@@ -23,6 +21,26 @@
                 label="Category (optional)"
                 hint="e.g., Family, Medical, Friends"
               ></v-text-field>
+            </v-col>
+            
+            <v-col cols="12" md="6">
+              <v-switch
+                v-model="useVAD"
+                label="Use Voice Activity Detection (VAD)"
+                hint="Removes silence from voice samples"
+                persistent-hint
+              ></v-switch>
+            </v-col>
+            
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="vadAggressiveness"
+                :items="vadLevels"
+                label="VAD Aggressiveness"
+                hint="Higher values filter more aggressively"
+                persistent-hint
+                :disabled="!useVAD"
+              ></v-select>
             </v-col>
           </v-row>
           
@@ -90,12 +108,25 @@
       <v-card-title>
         Voice Profiles
         <v-spacer></v-spacer>
+        <v-btn
+          v-if="profiles.length > 0"
+          color="error"
+          size="small"
+          variant="outlined"
+          @click="confirmDeleteAll"
+          class="mr-2"
+        >
+          <v-icon start>mdi-delete-sweep</v-icon>
+          Delete All
+        </v-btn>
         <v-text-field
           v-model="search"
           append-icon="mdi-magnify"
           label="Search"
           single-line
           hide-details
+          density="compact"
+          style="max-width: 300px;"
         ></v-text-field>
       </v-card-title>
       
@@ -183,6 +214,44 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    
+    <!-- Delete All Confirmation Dialog -->
+    <v-dialog v-model="deleteAllDialog" max-width="500px">
+      <v-card>
+        <v-card-title class="text-h6">
+          <v-icon color="error" class="mr-2">mdi-alert</v-icon>
+          Delete All Profiles
+        </v-card-title>
+        <v-card-text>
+          <v-alert type="warning" variant="tonal" class="mb-4">
+            This action cannot be undone!
+          </v-alert>
+          <p>
+            Are you sure you want to delete <strong>ALL {{ profiles.length }} voice profiles</strong>?
+          </p>
+          <p class="mt-2">
+            This will permanently remove:
+          </p>
+          <ul class="ml-4">
+            <li>All voice profiles</li>
+            <li>All audio recordings</li>
+            <li>All voice embeddings</li>
+          </ul>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" @click="deleteAllDialog = false">Cancel</v-btn>
+          <v-btn 
+            color="error" 
+            variant="flat"
+            @click="deleteAllProfiles"
+            :loading="isDeletingAll"
+          >
+            Delete All Profiles
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -205,6 +274,14 @@ export default {
       activeTab: 'record',
       importedFile: null,
       audioPreviewUrl: null,
+      useVAD: true,
+      vadAggressiveness: 1,
+      vadLevels: [
+        { title: '0 - Least aggressive', value: 0 },
+        { title: '1 - Moderately aggressive', value: 1 },
+        { title: '2 - Aggressive', value: 2 },
+        { title: '3 - Most aggressive', value: 3 }
+      ],
       
       // Profiles table
       search: '',
@@ -220,9 +297,11 @@ export default {
       // Dialogs
       audioDialog: false,
       deleteDialog: false,
+      deleteAllDialog: false,
       selectedProfile: null,
       audioSrc: '',
-      isDeleting: false
+      isDeleting: false,
+      isDeletingAll: false
     }
   },
   mounted() {
@@ -286,6 +365,8 @@ export default {
       if (this.category) {
         formData.append('category', this.category)
       }
+      formData.append('use_vad', this.useVAD)
+      formData.append('vad_aggressiveness', this.vadAggressiveness)
       
       // Append either recorded blob or imported file
       if (this.audioBlob) {
@@ -313,6 +394,8 @@ export default {
       this.category = ''
       this.audioBlob = null
       this.importedFile = null
+      this.useVAD = true
+      this.vadAggressiveness = 1
       
       if (this.audioPreviewUrl) {
         URL.revokeObjectURL(this.audioPreviewUrl)
@@ -358,6 +441,30 @@ export default {
         })
         .finally(() => {
           this.isDeleting = false
+        })
+    },
+    
+    confirmDeleteAll() {
+      this.deleteAllDialog = true
+    },
+    
+    deleteAllProfiles() {
+      this.isDeletingAll = true
+      
+      API.deleteAllProfiles()
+        .then(response => {
+          this.profiles = []
+          this.deleteAllDialog = false
+          
+          // Show success message with details
+          alert(`Successfully deleted ${response.data.deleted_count} profiles and ${response.data.deleted_files} files.`)
+        })
+        .catch(error => {
+          console.error('Error deleting all profiles:', error)
+          alert('Failed to delete all profiles. Please try again.')
+        })
+        .finally(() => {
+          this.isDeletingAll = false
         })
     }
   }

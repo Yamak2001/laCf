@@ -66,6 +66,7 @@
           { title: 'Home', icon: 'mdi-home', to: '/' },
           { title: 'Voice Profiles', icon: 'mdi-account-voice', to: '/profiles' },
           { title: 'Voice Isolation', icon: 'mdi-waveform', to: '/isolation' },
+          { title: 'Quick Isolation', icon: 'mdi-lightning-bolt', to: '/streamlined' },
           { title: 'Models', icon: 'mdi-cog-box', to: '/models' }
         ]
       }
